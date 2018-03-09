@@ -1,0 +1,22 @@
+# -----------------------------------------------------------
+# Basic settings
+# -----------------------------------------------------------
+
+# fill in Domoticz host
+host='127.0.0.1'
+# fill in Domoticz port
+port='10080'
+
+# or supply a fully qualified url, e.g.
+# url='http://127.0.0.1:8080'
+# url='https://usr:pwd/www.mydomain.org/domoticzroot'
+
+
+# -----------------------------------------------------------
+# Optional filters in case you have multiple Evohome systems
+# or multiple interfaces to the same Evohome system
+# -----------------------------------------------------------
+
+;hwname='Evohome'
+;hwtype='Evohome via Web API'
+
