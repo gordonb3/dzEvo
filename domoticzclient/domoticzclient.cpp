@@ -465,7 +465,7 @@ void DomoticzClient::set_temperature(const std::string zonename, const std::stri
 	std::string mode = (until.empty()) ? "PermanentOverride" : "TemporaryOverride";
 
 	std::stringstream ss;
-	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << zonename << "&description=" << devices[idx].Description
+	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << urlencode(zonename) << "&description=" << urlencode(devices[idx].Description)
 	   << "&setpoint=" << setpoint << "&mode=" << mode;
 	if (!until.empty())
 		ss << "&until=" << until;
@@ -502,7 +502,7 @@ void DomoticzClient::cancel_temperature_override(const std::string zonename)
 		throw std::invalid_argument(std::string("zone with name ")+zonename+" does not exist");
 
 	std::stringstream ss;
-	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << zonename << "&description=" << devices[idx].Description
+	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << urlencode(zonename) << "&description=" << urlencode(devices[idx].Description)
 	   << "&setpoint=" << devices[idx].SetPoint << "&mode=Auto&used=true";
 
 #ifdef DRYRUN
@@ -592,7 +592,7 @@ void DomoticzClient::set_DHW_state(const std::string state, const std::string un
 	std::string mode = (until.empty()) ? "PermanentOverride" : "TemporaryOverride";
 
 	std::stringstream ss;
-	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << devices[idx].Name << "&description=" << devices[idx].Description
+	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << urlencode(devices[idx].Name) << "&description=" << urlencode(devices[idx].Description)
 	   << "&state=" << state << "&mode=" << mode << "&used=true";
 
 
