@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2016 Gordon Bos <gordon@bosvangennip.nl> All rights reserved.
+ * Copyright (c) 2016-2020 Gordon Bos <gordon@bosvangennip.nl> All rights reserved.
  *
- * Demo app for connecting to Evohome and Domoticz
+ * Companion app for controlling Evohome through Domoticz
  *
  *
- *
+ * Source code subject to GNU GENERAL PUBLIC LICENSE version 3
  */
 
 #include <iostream>
@@ -538,13 +538,14 @@ int query_main(int argc, char** argv, DomoticzClient &dclient)
 
 void cmd_set_temperature(DomoticzClient &dclient, const std::string zonename, const std::string setpoint, const std::string until="")
 {
-	std::string idx = "-1";
+	std::string idx = dclient.get_device_idx_by_name(zonename);
+	if ((idx == "-1") || (dclient.devices[idx].SubType != "Zone"))
+		throw std::invalid_argument(std::string("Evohome zone with name '")+zonename+"' does not exist");
+
 	std::string s_setpoint;
 
 	if (setpoint == "auto")
 	{
-		if (idx == "-1")
-			idx = dclient.get_device_idx_by_name(zonename);
 		if ((dclient.devices[idx].Status != "Auto") && (dclient.devices[idx].Status != "OpenWindow"))
 			dclient.cancel_temperature_override(zonename);
 		else
@@ -557,8 +558,6 @@ void cmd_set_temperature(DomoticzClient &dclient, const std::string zonename, co
 		// adjust current setpoint
 		if ((setpoint[1] == '1') || (setpoint[1] == '2') || (setpoint[1] == '3'))
 		{
-			if (idx == "-1")
-				idx = dclient.get_device_idx_by_name(zonename);
 			stringstream ss;
 			ss << dclient.devices[idx].SetPoint;
 			float f_setpoint;
@@ -659,9 +658,6 @@ void cmd_set_temperature(DomoticzClient &dclient, const std::string zonename, co
 			s_until = "";
 		else
 		{
-			if (idx == "-1")
-				idx = dclient.get_device_idx_by_name(zonename);
-
 			if (until[0] == 'a')
 			{
 				if ((dclient.devices[idx].Status == "Auto") || (dclient.devices[idx].Status == "OpenWindow"))
@@ -708,7 +704,9 @@ void cmd_set_evohome_system_mode(DomoticzClient &dclient, const std::string syst
 
 void cmd_set_DHW_state(DomoticzClient &dclient, const std::string state, const std::string until, const std::string hardwarename="")
 {
-	std::string idx = "-1";
+	std::string idx = dclient.get_DHW(hardwarename);
+	if (idx == "-1")
+		throw std::invalid_argument(std::string("Evohome Hot Water device does not exist"));
 
 	// convert systemmode to lowercase
 	stringstream ss;
@@ -748,9 +746,6 @@ void cmd_set_DHW_state(DomoticzClient &dclient, const std::string state, const s
 			s_until = "";
 		else
 		{
-			if (idx == "-1")
-				idx = dclient.get_DHW(hardwarename);
-
 			if (until[0] == 'a')
 			{
 				if (dclient.devices[idx].Status == "Auto")
@@ -780,7 +775,7 @@ int cmd_set_main(int argc, char** argv, DomoticzClient &dclient)
 	std::string what;
 
 	what = "temperature";
-	if (what.find(argv[2]) == 0)		// set temperature <zone> <setpoint> [until <time> | for <nn> [minutes] | <time> | +<nn> [minutes]]
+	if (what.find(argv[2]) == 0)		// set temperature <zone> <setpoint> [for <nn> [minutes] | +<nn> [minutes] | [until] <time>]
 	{
 		if (argc < 5)
 			usage("settemp");
