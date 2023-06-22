@@ -1,0 +1,6 @@
+*.conf
+*.o
+*.json
+/dzEvo
+release
+cookie.txt

@@ -15,33 +15,36 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="domoticzclient\domoticzclient.cpp">
+    <ClCompile Include="..\domoticzclient\domoticzclient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="domoticzclient\webclient.cpp">
+    <ClCompile Include="..\domoticzclient\RESTClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="app\dzEvo.cpp">
+    <ClCompile Include="..\app\dzEvo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="domoticzclient\jsoncpp\json_writer.cpp">
+    <ClCompile Include="..\domoticzclient\jsoncpp\json_writer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="domoticzclient\jsoncpp\json_value.cpp">
+    <ClCompile Include="..\domoticzclient\jsoncpp\json_value.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="domoticzclient\jsoncpp\json_reader.cpp">
+    <ClCompile Include="..\domoticzclient\jsoncpp\json_reader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="domoticzclient\domoticzclient.h">
+    <ClInclude Include="..\domoticzclient\domoticzclient.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="domoticzclient\webclient.h">
+    <ClInclude Include="..\domoticzclient\RESTClient.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="domoticzclient\jsoncpp\json.h">
+    <ClInclude Include="..\domoticzclient\API.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\domoticzclient\jsoncpp\json.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

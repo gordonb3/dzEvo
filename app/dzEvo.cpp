@@ -354,11 +354,11 @@ void scan_for_evohome_hardware(DomoticzClient &dclient)
 {
 	std::vector<std::string>().swap(myinstallations);
 	dclient.scan_hardware();
-	if (dclient.installations.size() == 0)
+	if (dclient.m_evohardware.size() == 0)
 		throw std::invalid_argument("No active Evohome installation found");
 
-	for (std::vector<DomoticzClient::hardware>::size_type i = 0; i < dclient.installations.size(); ++i)
-		myinstallations.push_back(dclient.get_hwid_by_name(dclient.installations[i].HardwareName));
+	for (std::vector<DomoticzClient::hardware>::size_type i = 0; i < dclient.m_evohardware.size(); ++i)
+		myinstallations.push_back(dclient.get_hwid_by_name(dclient.m_evohardware[i].HardwareName));
 }
 
 
@@ -372,19 +372,19 @@ void scan_for_evohome_hardware(DomoticzClient &dclient)
 void query_evohome_hardware(DomoticzClient &dclient)
 {
 	dclient.scan_hardware();
-	if (dclient.installations.size() == 0)
+	if (dclient.m_evohardware.size() == 0)
 		throw std::invalid_argument("No active Evohome installation found");
 
 	cout << "ID\tName\t\t\tHardware Type" << endl;
-	for (std::vector<DomoticzClient::hardware>::size_type i = 0; i < dclient.installations.size(); ++i)
+	for (std::vector<DomoticzClient::hardware>::size_type i = 0; i < dclient.m_evohardware.size(); ++i)
 	{
-		cout << dclient.get_hwid_by_name(dclient.installations[i].HardwareName) << "\t"
-		     << dclient.installations[i].HardwareName << "\t";
-		if (dclient.installations[i].HardwareName.length() < 16)
+		cout << dclient.get_hwid_by_name(dclient.m_evohardware[i].HardwareName) << "\t"
+		     << dclient.m_evohardware[i].HardwareName << "\t";
+		if (dclient.m_evohardware[i].HardwareName.length() < 16)
 			cout << "\t";
-		if (dclient.installations[i].HardwareName.length() < 8)
+		if (dclient.m_evohardware[i].HardwareName.length() < 8)
 			cout << "\t";
-		cout << dclient.installations[i].HardwareType << endl;
+		cout << dclient.m_evohardware[i].HardwareType << endl;
 	}
 }
 
@@ -403,12 +403,12 @@ void query_evohome_devices(DomoticzClient &dclient, const std::string hwname="")
 	}
 
 	cout << "ID\tName\t\t\tDevice Type" << endl;
-	dclient.devices.clear();
+	dclient.m_devices.clear();
 	for (std::vector<std::string>::size_type i = 0; i < myinstallations.size(); ++i)
 		dclient.get_devices(myinstallations[i],1);
 
 	std::map<std::string,DomoticzClient::device>::iterator it;
-	for ( it = dclient.devices.begin(); it != dclient.devices.end(); it++ )
+	for ( it = dclient.m_devices.begin(); it != dclient.m_devices.end(); it++ )
 	{
 		cout << it->second.idx << "\t" << it->second.Name << "\t";
 		if (it->second.Name.length() < 16)
@@ -424,21 +424,21 @@ void query_evohome_zone_status(DomoticzClient &dclient, const std::string zonena
 {
 	if (myinstallations.size() < 1)
 		scan_for_evohome_hardware(dclient);
-	dclient.devices.clear();
+	dclient.m_devices.clear();
 	for (std::vector<std::string>::size_type i = 0; i < myinstallations.size(); ++i)
 		dclient.get_devices(myinstallations[i],1);
 
 
 	std::string idx = dclient.get_device_idx_by_name(zonename);
-	if ((idx == "-1") || (dclient.devices[idx].SubType != "Zone"))
+	if ((idx == "-1") || (dclient.m_devices[idx].SubType != "Zone"))
 		throw std::invalid_argument(std::string("Evohome zone with name '")+zonename+"' does not exist");
 
 	cout << "ID\tTemp\tSetPoint\tStatus\t\t\tUntil" << endl;
-	cout << idx << "\t" << dclient.devices[idx].Temp << "\t" << dclient.devices[idx].SetPoint << "\t\t"
-	     << dclient.devices[idx].Status << "\t\t";
-		if (dclient.devices[idx].Status.length() < 8)
+	cout << idx << "\t" << dclient.m_devices[idx].Temp << "\t" << dclient.m_devices[idx].SetPoint << "\t\t"
+	     << dclient.m_devices[idx].Status << "\t\t";
+		if (dclient.m_devices[idx].Status.length() < 8)
 			cout << "\t";
-	cout << utc_to_local(dclient.devices[idx].Until) << endl;
+	cout << utc_to_local(dclient.m_devices[idx].Until) << endl;
 }
 
 
@@ -446,13 +446,13 @@ void query_evohome_system_mode(DomoticzClient &dclient, const std::string hardwa
 {
 	if (myinstallations.size() < 1)
 		scan_for_evohome_hardware(dclient);
-	dclient.devices.clear();
+	dclient.m_devices.clear();
 	for (std::vector<std::string>::size_type i = 0; i < myinstallations.size(); ++i)
 		dclient.get_devices(myinstallations[i],1);
 
 	std::string idx = "";
 	std::map<std::string,DomoticzClient::device>::iterator it;
-	for ( it = dclient.devices.begin(); it != dclient.devices.end(); it++ )
+	for ( it = dclient.m_devices.begin(); it != dclient.m_devices.end(); it++ )
 	{
 		if (it->second.SubType == "Evohome")
 		{
@@ -539,14 +539,14 @@ int query_main(int argc, char** argv, DomoticzClient &dclient)
 void cmd_set_temperature(DomoticzClient &dclient, const std::string zonename, const std::string setpoint, const std::string until="")
 {
 	std::string idx = dclient.get_device_idx_by_name(zonename);
-	if ((idx == "-1") || (dclient.devices[idx].SubType != "Zone"))
+	if ((idx == "-1") || (dclient.m_devices[idx].SubType != "Zone"))
 		throw std::invalid_argument(std::string("Evohome zone with name '")+zonename+"' does not exist");
 
 	std::string s_setpoint;
 
 	if (setpoint == "auto")
 	{
-		if ((dclient.devices[idx].Status != "Auto") && (dclient.devices[idx].Status != "OpenWindow"))
+		if ((dclient.m_devices[idx].Status != "Auto") && (dclient.m_devices[idx].Status != "OpenWindow"))
 			dclient.cancel_temperature_override(zonename);
 		else
 			cerr << "WARNING: zone is already set to follow schedule" << endl;
@@ -559,7 +559,7 @@ void cmd_set_temperature(DomoticzClient &dclient, const std::string zonename, co
 		if ((setpoint[1] == '1') || (setpoint[1] == '2') || (setpoint[1] == '3'))
 		{
 			stringstream ss;
-			ss << dclient.devices[idx].SetPoint;
+			ss << dclient.m_devices[idx].SetPoint;
 			float f_setpoint;
 			ss >> f_setpoint;
 			char adj = setpoint[1] - 0x30;
@@ -660,13 +660,13 @@ void cmd_set_temperature(DomoticzClient &dclient, const std::string zonename, co
 		{
 			if (until[0] == 'a')
 			{
-				if ((dclient.devices[idx].Status == "Auto") || (dclient.devices[idx].Status == "OpenWindow"))
-					s_until = dclient.devices[idx].Until;
+				if ((dclient.m_devices[idx].Status == "Auto") || (dclient.m_devices[idx].Status == "OpenWindow"))
+					s_until = dclient.m_devices[idx].Until;
 				else
 					throw std::invalid_argument("Can't select next schedule switch point when zone is in override mode");
 			}
 			else
-				s_until = dclient.devices[idx].Until;
+				s_until = dclient.m_devices[idx].Until;
 			if (s_until.empty())
 			{
 				if (until.empty())
@@ -748,13 +748,13 @@ void cmd_set_DHW_state(DomoticzClient &dclient, const std::string state, const s
 		{
 			if (until[0] == 'a')
 			{
-				if (dclient.devices[idx].Status == "Auto")
-					s_until = dclient.devices[idx].Until;
+				if (dclient.m_devices[idx].Status == "Auto")
+					s_until = dclient.m_devices[idx].Until;
 				else
 					throw std::invalid_argument("Can't select next schedule switch point when device is in override mode");
 			}
 			else
-				s_until = dclient.devices[idx].Until;
+				s_until = dclient.m_devices[idx].Until;
 			if (s_until.empty())
 			{
 				if (until.empty())
@@ -857,7 +857,11 @@ int main(int argc, char** argv)
 
 	// initialise connection to Domoticz server
 	DomoticzClient dclient = DomoticzClient(url);
-
+	if (!evoconfig["useoldapi"].empty())
+	{
+		if ((evoconfig["useoldapi"][0] == '1') || (evoconfig["useoldapi"][0] == 't') || (evoconfig["useoldapi"][0] == 'y'))
+			dclient.set_oldapi();
+	}
 	try
 	{
 		menu = "query";
@@ -866,27 +870,23 @@ int main(int argc, char** argv)
 			return query_main(argc, argv, dclient);
 		}
 
-		if (!evoconfig["hwtype"].empty())
-			dclient.get_hardware_types(evoconfig["hwtype"]);
-
-		if (!evoconfig["hwname"].empty())
-			dclient.set_hardware_by_name(evoconfig["hwname"]);
-
 		menu = "set";
 		if (menu.find(argv[1]) == 0)
+		{
+			if (!evoconfig["hwtype"].empty())
+				dclient.get_hardware_types(evoconfig["hwtype"]);
+
+			if (!evoconfig["hwname"].empty())
+				dclient.set_hardware_by_name(evoconfig["hwname"]);
+
 			return cmd_set_main(argc, argv, dclient);
-
-
+		}
 	}
 	catch (exception& e)
 	{
-		dclient.cleanup();
 		cerr << "ERROR: " << e.what() << endl;
 		return 1;
 	}
-
-	// cleanup
-	dclient.cleanup();
 
 	usage("general");
 	return 0;

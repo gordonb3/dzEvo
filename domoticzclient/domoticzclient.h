@@ -17,12 +17,13 @@
 class DomoticzClient
 {
 	private:
-	std::string domoticzhost;
-	std::vector<std::string> domoticzheader;
+	std::string m_DomoticzHost;
+	std::vector<std::string> m_DomoticzHeader;
+	bool m_useoldapi;
 
 	void init();
-	std::string send_receive_data(std::string url);
-	std::string send_receive_data(std::string url, std::string postdata);
+	bool send_receive_data(const std::string &szUrl, std::string &szResponse);
+
 
 
 	public:
@@ -49,9 +50,9 @@ class DomoticzClient
 		std::string HardwareTypeVal;
 	};
 
-	std::map<std::string,std::string> hwtypes;
-	std::map<std::string,device> devices;
-	std::vector<hardware> installations;
+	std::map<std::string,std::string> m_hwtypes;
+	std::map<std::string,device> m_devices;
+	std::vector<hardware> m_evohardware;
 
 	DomoticzClient(std::string host);
 	~DomoticzClient();
@@ -81,6 +82,7 @@ class DomoticzClient
 	void set_DHW_state(const std::string state, const std::string until);
 	void set_DHW_state(const std::string state, const std::string until, const std::string hardwarename);
 
+	void set_oldapi();
 };
 
 #endif

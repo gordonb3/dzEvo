@@ -13,6 +13,12 @@ port='10080'
 
 
 # -----------------------------------------------------------
+# For compatibility with Domoticz version 2023.1 or lower
+# you need to enable the old API
+# -----------------------------------------------------------
+;useoldapi=yes
+
+# -----------------------------------------------------------
 # Optional filters in case you have multiple Evohome systems
 # or multiple interfaces to the same Evohome system
 # -----------------------------------------------------------

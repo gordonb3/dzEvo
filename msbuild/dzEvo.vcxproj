@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -22,27 +22,28 @@
     <ProjectGuid>{246EB9F1-CCF3-44AF-B984-563447402A96}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <ProjectName>dzEvo</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -90,6 +91,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>CompileAsCpp</CompileAs>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AdditionalIncludeDirectories>e:\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
@@ -101,20 +103,31 @@
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
+      <AdditionalLibraryDirectories>e:\lib</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>e:\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>e:\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libcurl_a.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="domoticzclient\domoticzclient.cpp" />
-    <ClCompile Include="domoticzclient\webclient.cpp" />
-    <ClCompile Include="app\dzEvo.cpp" />
-    <ClCompile Include="domoticzclient\jsoncpp\json_writer.cpp" />
-    <ClCompile Include="domoticzclient\jsoncpp\json_value.cpp" />
-    <ClCompile Include="domoticzclient\jsoncpp\json_reader.cpp" />
+    <ClCompile Include="..\domoticzclient\domoticzclient.cpp" />
+    <ClCompile Include="..\domoticzclient\RESTClient.cpp" />
+    <ClCompile Include="..\app\dzEvo.cpp" />
+    <ClCompile Include="..\domoticzclient\jsoncpp\json_writer.cpp" />
+    <ClCompile Include="..\domoticzclient\jsoncpp\json_value.cpp" />
+    <ClCompile Include="..\domoticzclient\jsoncpp\json_reader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="domoticzclient\domoticzclient.h" />
-    <ClInclude Include="domoticzclient\webclient.h" />
-    <ClInclude Include="domoticzclient\jsoncpp\json.h" />
+    <ClInclude Include="..\domoticzclient\domoticzclient.h" />
+    <ClInclude Include="..\domoticzclient\RESTClient.hpp" />
+    <ClInclude Include="..\domoticzclient\API.hpp" />
+    <ClInclude Include="..\domoticzclient\jsoncpp\json.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

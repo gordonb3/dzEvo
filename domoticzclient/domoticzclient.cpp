@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Gordon Bos <gordon@bosvangennip.nl> All rights reserved.
+ * Copyright (c) 2016-2023 Gordon Bos <gordon@bosvangennip.nl> All rights reserved.
  *
  * Json client for Domoticz
  *
@@ -12,7 +12,8 @@
 #include <iostream>
 #include <sstream>
 #include "domoticzclient.h"
-#include "webclient.h"
+#include "RESTClient.hpp"
+#include "API.hpp"
 #include "jsoncpp/json.h"
 
 #ifdef DEBUG
@@ -24,15 +25,7 @@
 #endif
 
 
-//const char DomoticzClient::m_szControllerMode[7][20]={"Normal","Economy","Away","Day Off","Custom","Heating Off","Unknown"};
-//const char DomoticzClient::m_szWebAPIMode[7][20]={"Auto","AutoWithEco","Away","DayOff","Custom","HeatingOff","Unknown"};
-//const char DomoticzClient::m_szZoneMode[7][20]={"Auto","PermanentOverride","TemporaryOverride","OpenWindow","LocalOverride","RemoteOverride","Unknown"};
-
-//const uint8_t CEvohomeWeb::m_dczToEvoWebAPIMode[7] = { 0,2,3,4,6,1,5 };
-
-
 const std::string DomoticzClient::evo_modes[7] = {"Auto", "HeatingOff", "AutoWithEco", "Away", "DayOff", "", "Custom"};
-
 
 
 /*
@@ -40,73 +33,36 @@ const std::string DomoticzClient::evo_modes[7] = {"Auto", "HeatingOff", "AutoWit
  */
 DomoticzClient::DomoticzClient(std::string host)
 {
-	domoticzhost = host;
-	domoticzheader.clear();
-	domoticzheader.push_back("Accept: application/json, application/xml, text/json, text/x-json, text/javascript, text/xml");
-	domoticzheader.push_back("content-type: application/json");
-	domoticzheader.push_back("charsets: utf-8");
-	init();
+	m_DomoticzHost = host;
+	m_DomoticzHeader.clear();
+	m_DomoticzHeader.push_back("Accept: application/json, application/xml, text/json, text/x-json, text/javascript, text/xml");
+	m_DomoticzHeader.push_back("content-type: application/json");
+	m_DomoticzHeader.push_back("charsets: utf-8");
+	m_hwtypes.clear();
+	m_useoldapi = false;
 }
 
 DomoticzClient::~DomoticzClient()
 {
-	cleanup();
 }
 
 /************************************************************************
  *									*
- *	Web client helpers						*
+ *	Web client helper						*
  *									*
  ************************************************************************/
 
-/*
- * Initialize web client
- */
-void DomoticzClient::init()
-{
-	hwtypes.clear();
-	web_connection_init("domoticz");
-}
-
-
-/*
- * Cleanup web client
- */
-void DomoticzClient::cleanup()
-{
-	web_connection_cleanup("domoticz");
-}
 
 /*
  * Execute web query
  */
-std::string DomoticzClient::send_receive_data(std::string url)
-{
-	try
-	{
-		return send_receive_data(url, "");
-	}
-	catch (...)
-	{
-		throw;
-	}
-	return "";
-}
 
-std::string DomoticzClient::send_receive_data(std::string url, std::string postdata)
+bool DomoticzClient::send_receive_data(const std::string &szUrl, std::string &szResponse)
 {
-	std::stringstream ss_url;
-	ss_url << domoticzhost << url;
-	std::string s_res;
-	try
-	{
-		s_res = web_send_receive_data("domoticz", ss_url.str(), postdata, domoticzheader);
-	}
-	catch (...)
-	{
-		throw;
-	}
-	return s_res;
+	std::string myUrl=m_DomoticzHost + "/json.htm?" + szUrl;
+	connection::HTTP::method::value HTTP_method = (connection::HTTP::method::value)(connection::HTTP::method::HEAD | connection::HTTP::method::GET);
+	std::vector<std::string> vHeaderData;
+	return RESTClient::Execute(HTTP_method, myUrl, "", m_DomoticzHeader, szResponse, vHeaderData, false, -1, true);
 }
 
 
@@ -132,18 +88,15 @@ std::string _int_to_string(const int myint)
 
 std::string DomoticzClient::get_hwid_by_name(const std::string hardwarename)
 {
-	std::string s_res;
-	try
-	{
-		s_res = send_receive_data("/json.htm?type=hardware");
-	}
-	catch (...)
-	{
-		throw;
-	}
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::hardware::list, szResult);
+	else
+		send_receive_data(domoticz::APIv2::hardware::list, szResult);
 	Json::Value j_res;
-	Json::Reader jReader;
-	if (!jReader.parse(s_res.c_str(), j_res) || !j_res.isMember("result") || !j_res["result"].isArray())
+	Json::CharReaderBuilder jBuilder;
+	std::unique_ptr<Json::CharReader> jReader(jBuilder.newCharReader());
+	if (!jReader->parse(szResult.c_str(), szResult.c_str() + szResult.size(), &j_res, nullptr) || !j_res.isMember("result") || !j_res["result"].isArray())
 		return "-1";
 
 	size_t l = j_res["result"].size();
@@ -158,19 +111,16 @@ std::string DomoticzClient::get_hwid_by_name(const std::string hardwarename)
 
 void DomoticzClient::get_hardware_types(const std::string needle)
 {
-	hwtypes.clear();
-	std::string s_res;
-	try
-	{
-		s_res = send_receive_data("/json.htm?type=command&param=gethardwaretypes");
-	}
-	catch (...)
-	{
-		throw;
-	}
+	m_hwtypes.clear();
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::hardware::gettypes, szResult);
+	else
+		send_receive_data(domoticz::APIv2::hardware::gettypes, szResult);
 	Json::Value j_res;
-	Json::Reader jReader;
-	if (!jReader.parse(s_res.c_str(), j_res) || !j_res.isMember("result") || !j_res["result"].isArray())
+	Json::CharReaderBuilder jBuilder;
+	std::unique_ptr<Json::CharReader> jReader(jBuilder.newCharReader());
+	if (!jReader->parse(szResult.c_str(), szResult.c_str() + szResult.size(), &j_res, nullptr) || !j_res.isMember("result") || !j_res["result"].isArray())
 		return;
 
 	size_t l = j_res["result"].size();
@@ -179,32 +129,29 @@ void DomoticzClient::get_hardware_types(const std::string needle)
 		if (j_res["result"][(int)(i)]["name"].asString().find(needle) != std::string::npos)
 		{
 			std::string idx = j_res["result"][(int)(i)]["idx"].asString();
-			hwtypes[idx] = j_res["result"][(int)(i)]["name"].asString();
+			m_hwtypes[idx] = j_res["result"][(int)(i)]["name"].asString();
 		}
 	}
-	if (hwtypes.size() < 1)
-		throw std::invalid_argument(std::string("could not find Evohome hardware with type filter '")+needle+"'");
+	if (m_hwtypes.size() < 1)
+		throw std::invalid_argument(std::string("could not find Evohome hardware with type filter '") + needle + "'");
 }
 
 
 void DomoticzClient::scan_hardware()
 {
-	if (hwtypes.size() == 0)
+	if (m_hwtypes.size() == 0)
 		get_hardware_types(HARDWAREFILTER);
 
-	std::vector<hardware>().swap(installations);
-	std::string s_res;
-	try
-	{
-		s_res = send_receive_data("/json.htm?type=hardware");
-	}
-	catch (...)
-	{
-		throw;
-	}
+	std::vector<hardware>().swap(m_evohardware);
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::hardware::list, szResult);
+	else
+		send_receive_data(domoticz::APIv2::hardware::list, szResult);
 	Json::Value j_res;
-	Json::Reader jReader;
-	if (!jReader.parse(s_res.c_str(), j_res) || !j_res.isMember("result") || !j_res["result"].isArray())
+	Json::CharReaderBuilder jBuilder;
+	std::unique_ptr<Json::CharReader> jReader(jBuilder.newCharReader());
+	if (!jReader->parse(szResult.c_str(), szResult.c_str() + szResult.size(), &j_res, nullptr) || !j_res.isMember("result") || !j_res["result"].isArray())
 		return;
 
 	size_t l = j_res["result"].size();
@@ -214,8 +161,8 @@ void DomoticzClient::scan_hardware()
 			continue;
 
 		std::string hw_type = j_res["result"][(int)(i)]["Type"].asString();
-		std::map<std::string,std::string>::iterator it = hwtypes.find(hw_type);
-		if (it != hwtypes.end())
+		std::map<std::string,std::string>::iterator it = m_hwtypes.find(hw_type);
+		if (it != m_hwtypes.end())
 		{
 			hardware newhw = hardware();
 
@@ -224,7 +171,7 @@ void DomoticzClient::scan_hardware()
 			newhw.HardwareTypeVal = j_res["result"][(int)(i)]["Type"].asString();
 			newhw.idx = j_res["result"][(int)(i)]["idx"].asString();
 
-			installations.push_back(newhw);
+			m_evohardware.push_back(newhw);
 		}
 	}
 }
@@ -232,26 +179,26 @@ void DomoticzClient::scan_hardware()
 
 void DomoticzClient::set_hardware_by_name(const std::string hardwarename)
 {
-	if ((installations.size() == 1) && (installations[0].HardwareName == hardwarename))  // already selected
+	if ((m_evohardware.size() == 1) && (m_evohardware[0].HardwareName == hardwarename))  // already selected
 		return;
 
-	if (hwtypes.size() == 0)
+	if (m_hwtypes.size() == 0)
 		get_hardware_types(HARDWAREFILTER);
 
-	std::vector<hardware>().swap(installations);
+	std::vector<hardware>().swap(m_evohardware);
 	std::string idx = get_hwid_by_name(hardwarename);
-	std::string s_res;
-	try
-	{
-		s_res = send_receive_data("/json.htm?type=hardware");
-	}
-	catch (...)
-	{
-		throw;
-	}
+	if (idx == "-1")
+		return;
+	
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::hardware::list, szResult);
+	else
+		send_receive_data(domoticz::APIv2::hardware::list, szResult);
 	Json::Value j_res;
-	Json::Reader jReader;
-	if (!jReader.parse(s_res.c_str(), j_res) || !j_res.isMember("result") || !j_res["result"].isArray())
+	Json::CharReaderBuilder jBuilder;
+	std::unique_ptr<Json::CharReader> jReader(jBuilder.newCharReader());
+	if (!jReader->parse(szResult.c_str(), szResult.c_str() + szResult.size(), &j_res, nullptr) || !j_res.isMember("result") || !j_res["result"].isArray())
 		return;
 
 	size_t l = j_res["result"].size();
@@ -264,62 +211,44 @@ void DomoticzClient::set_hardware_by_name(const std::string hardwarename)
 			newhw.idx = j_res["result"][(int)(i)]["idx"].asString();
 			newhw.HardwareName = hardwarename;
 			newhw.HardwareTypeVal = j_res["result"][(int)(i)]["Type"].asString();
-			newhw.HardwareType = hwtypes[newhw.HardwareTypeVal];
+			newhw.HardwareType = m_hwtypes[newhw.HardwareTypeVal];
 
-			installations.push_back(newhw);
+			m_evohardware.push_back(newhw);
 		}
 	}
 
 	// clear dependend vars
-	devices.clear();
+	m_devices.clear();
 }
 
 
 bool DomoticzClient::get_devices()
 {
-	try
-	{
-		if (installations.size() < 1)
-			scan_hardware();
-		devices.clear();
-		for (std::vector<std::string>::size_type i = 0; i < installations.size(); ++i)
-			get_devices(installations[i].idx,1);
-		return (devices.size() > 0);
-	}
-	catch (...)
-	{
-		throw;
-	}
+	if (m_evohardware.size() < 1)
+		scan_hardware();
+	m_devices.clear();
+	for (std::vector<std::string>::size_type i = 0; i < m_evohardware.size(); ++i)
+		get_devices(m_evohardware[i].idx,1);
+	return (m_devices.size() > 0);
 	return false;
 }
 bool DomoticzClient::get_devices(const std::string hwid)
 {
-	try
-	{
-		return get_devices(hwid,0);
-	}
-	catch (...)
-	{
-		throw;
-	}
-	return false;
+	return get_devices(hwid,0);
 }
 bool DomoticzClient::get_devices(const std::string hwid, bool concatenate)
 {
 	if (!concatenate)
-		devices.clear();
-	std::string s_res;
-	try
-	{
-		s_res = send_receive_data("/json.htm?type=devices&displayhidden=1&used=all");
-	}
-	catch (...)
-	{
-		throw;
-	}
+		m_devices.clear();
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::devices::list, szResult);
+	else
+		send_receive_data(domoticz::APIv2::devices::list, szResult);
 	Json::Value j_res;
-	Json::Reader jReader;
-	if (!jReader.parse(s_res.c_str(), j_res) || !j_res.isMember("result") || !j_res["result"].isArray())
+	Json::CharReaderBuilder jBuilder;
+	std::unique_ptr<Json::CharReader> jReader(jBuilder.newCharReader());
+	if (!jReader->parse(szResult.c_str(), szResult.c_str() + szResult.size(), &j_res, nullptr) || !j_res.isMember("result") || !j_res["result"].isArray())
 		return false;
 
 	for (size_t i = 0; i < j_res["result"].size(); i++)
@@ -332,40 +261,31 @@ bool DomoticzClient::get_devices(const std::string hwid, bool concatenate)
 				continue;
 #endif
 			std::string idx = j_res["result"][(int)(i)]["idx"].asString();
-			devices[idx].idx = idx;
-			devices[idx].SubType = j_res["result"][(int)(i)]["SubType"].asString();
-			devices[idx].Name = j_res["result"][(int)(i)]["Name"].asString();
+			m_devices[idx].idx = idx;
+			m_devices[idx].SubType = j_res["result"][(int)(i)]["SubType"].asString();
+			m_devices[idx].Name = j_res["result"][(int)(i)]["Name"].asString();
 
-			devices[idx].SetPoint = j_res["result"][(int)(i)]["SetPoint"].asString();
-			devices[idx].Status = j_res["result"][(int)(i)]["Status"].asString();
-			devices[idx].Until = j_res["result"][(int)(i)]["Until"].asString();
-			devices[idx].HardwareName = j_res["result"][(int)(i)]["HardwareName"].asString();
-			devices[idx].Description = j_res["result"][(int)(i)]["Description"].asString();
+			m_devices[idx].SetPoint = j_res["result"][(int)(i)]["SetPoint"].asString();
+			m_devices[idx].Status = j_res["result"][(int)(i)]["Status"].asString();
+			m_devices[idx].Until = j_res["result"][(int)(i)]["Until"].asString();
+			m_devices[idx].HardwareName = j_res["result"][(int)(i)]["HardwareName"].asString();
+			m_devices[idx].Description = j_res["result"][(int)(i)]["Description"].asString();
 
 			// can't trust 'Temp' value for correct number of decimals
 			std::string data = j_res["result"][(int)(i)]["Data"].asString();
-			devices[idx].Temp = data.substr(0,data.find(" "));
+			m_devices[idx].Temp = data.substr(0,data.find(" "));
 		}
 	}
-	return (devices.size() > 0);
+	return (m_devices.size() > 0);
 }
 
 
 std::string DomoticzClient::get_device_idx_by_name(const std::string devicename)
 {
-	if (devices.size() == 0)
-	{
-		try
-		{
+	if (m_devices.size() == 0)
 			get_devices();
-		}
-		catch (...)
-		{
-			throw;
-		}
-	}
 	std::map<std::string,device>::iterator it;
-	for ( it = devices.begin(); it != devices.end(); it++ )
+	for ( it = m_devices.begin(); it != m_devices.end(); it++ )
 	{
 		if (it->second.Name == devicename)
 			return it->second.idx;
@@ -376,19 +296,10 @@ std::string DomoticzClient::get_device_idx_by_name(const std::string devicename)
 
 std::string DomoticzClient::get_controller()
 {
-	if (devices.size() == 0)
-	{
-		try
-		{
-			get_devices();
-		}
-		catch (...)
-		{
-			throw;
-		}
-	}
+	if (m_devices.size() == 0)
+		get_devices();
 	std::map<std::string,device>::iterator it;
-	for ( it = devices.begin(); it != devices.end(); it++ )
+	for ( it = m_devices.begin(); it != m_devices.end(); it++ )
 	{
 		if (it->second.SubType == "Evohome")
 			return it->second.idx;
@@ -397,35 +308,18 @@ std::string DomoticzClient::get_controller()
 }
 std::string DomoticzClient::get_controller(const std::string hardwarename)
 {
-	try
-	{
-		if (!hardwarename.empty())
-			set_hardware_by_name(hardwarename);
-		return get_controller();
-	}
-	catch (...)
-	{
-		throw;
-	}
-	return "-1";
+	if (!hardwarename.empty())
+		set_hardware_by_name(hardwarename);
+	return get_controller();
 }
 
 
 std::string DomoticzClient::get_DHW()
 {
-	if (devices.size() == 0)
-	{
-		try
-		{
-			get_devices();
-		}
-		catch (...)
-		{
-			throw;
-		}
-	}
+	if (m_devices.size() == 0)
+		get_devices();
 	std::map<std::string,device>::iterator it;
-	for ( it = devices.begin(); it != devices.end(); it++ )
+	for ( it = m_devices.begin(); it != m_devices.end(); it++ )
 	{
 		if (it->second.SubType == "Hot Water")
 			return it->second.idx;
@@ -434,55 +328,36 @@ std::string DomoticzClient::get_DHW()
 }
 std::string DomoticzClient::get_DHW(const std::string hardwarename)
 {
-	try
-	{
-		if (!hardwarename.empty())
-			set_hardware_by_name(hardwarename);
-		return get_DHW();
-	}
-	catch (...)
-	{
-		throw;
-	}
-	return "-1";
+	if (!hardwarename.empty())
+		set_hardware_by_name(hardwarename);
+	return get_DHW();
 }
 
 
 void DomoticzClient::set_temperature(const std::string zonename, const std::string setpoint, const std::string until)
 {
 	std::string idx;
-	try
-	{
-		idx = get_device_idx_by_name(zonename);
-	}
-	catch (...)
-	{
-		throw;
-	}
+	idx = get_device_idx_by_name(zonename);
 	if (idx == "-1")
 		throw std::invalid_argument(std::string("zone with name ")+zonename+" does not exist");
 
 	std::string mode = (until.empty()) ? "PermanentOverride" : "TemporaryOverride";
 
 	std::stringstream ss;
-	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << urlencode(zonename) << "&description=" << urlencode(devices[idx].Description)
+	ss << "&idx=" << idx << "&name=" << RESTClient::urlencode(zonename) << "&description=" << RESTClient::urlencode(m_devices[idx].Description)
 	   << "&setpoint=" << setpoint << "&mode=" << mode;
 	if (!until.empty())
 		ss << "&until=" << until;
 	ss << "&used=true";
 
 #ifdef DRYRUN
-	std::cout << domoticzhost << ss.str() << std::endl;
+	std::cout << m_DomoticzHost << ss.str() << std::endl;
 #else
-
-	try
-	{
-		send_receive_data(ss.str());
-	}
-	catch (...)
-	{
-		throw;
-	}
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::evohome::settemp + ss.str(), szResult);
+	else
+		send_receive_data(domoticz::APIv2::evohome::settemp + ss.str(), szResult);
 #endif
 }
 
@@ -490,33 +365,22 @@ void DomoticzClient::set_temperature(const std::string zonename, const std::stri
 void DomoticzClient::cancel_temperature_override(const std::string zonename)
 {
 	std::string idx;
-	try
-	{
-		idx = get_device_idx_by_name(zonename);
-	}
-	catch (...)
-	{
-		throw;
-	}
+	idx = get_device_idx_by_name(zonename);
 	if (idx == "-1")
 		throw std::invalid_argument(std::string("zone with name ")+zonename+" does not exist");
 
 	std::stringstream ss;
-	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << urlencode(zonename) << "&description=" << urlencode(devices[idx].Description)
-	   << "&setpoint=" << devices[idx].SetPoint << "&mode=Auto&used=true";
+	ss << "&idx=" << idx << "&name=" << RESTClient::urlencode(zonename) << "&description=" << RESTClient::urlencode(m_devices[idx].Description)
+	   << "&setpoint=" << m_devices[idx].SetPoint << "&mode=Auto&used=true";
 
 #ifdef DRYRUN
-	std::cout << domoticzhost << ss.str() << std::endl;
+	std::cout << m_DomoticzHost << ss.str() << std::endl;
 #else
-
-	try
-	{
-		send_receive_data(ss.str());
-	}
-	catch (...)
-	{
-		throw;
-	}
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::evohome::settemp + ss.str(), szResult);
+	else
+		send_receive_data(domoticz::APIv2::evohome::settemp + ss.str(), szResult);
 #endif
 }
 
@@ -524,14 +388,7 @@ void DomoticzClient::cancel_temperature_override(const std::string zonename)
 void DomoticzClient::set_system_mode(const std::string mode)
 {
 	std::string idx;
-	try
-	{
-		idx = get_controller();
-	}
-	catch (...)
-	{
-		throw;
-	}
+	idx = get_controller();
 	if (idx == "-1")
 		throw std::invalid_argument("could not find Evohome controller in Domoticz");
 
@@ -541,36 +398,24 @@ void DomoticzClient::set_system_mode(const std::string mode)
 	if (nZoneMode >= 7)
 		throw std::invalid_argument("invalid system mode - please verify your syntax");
 
-
 	std::stringstream ss;
-	ss << "/json.htm?type=command&param=switchmodal&idx=" << idx << "&status=" << mode << "&action=1";
+	ss << "&idx=" << idx << "&status=" << mode << "&action=1";
 
 #ifdef DRYRUN
-	std::cout << domoticzhost << ss.str() << std::endl;
+	std::cout << m_DomoticzHost << ss.str() << std::endl;
 #else
-
-	try
-	{
-		send_receive_data(ss.str());
-	}
-	catch (...)
-	{
-		throw;
-	}
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::evohome::setsysmode + ss.str(), szResult);
+	else
+		send_receive_data(domoticz::APIv2::evohome::setsysmode + ss.str(), szResult);
 #endif
 }
 void DomoticzClient::set_system_mode(const std::string mode, const std::string hardwarename)
 {
-	try
-	{
-		if (!hardwarename.empty())
-			set_hardware_by_name(hardwarename);
-		set_system_mode(mode);
-	}
-	catch (...)
-	{
-		throw;
-	}
+	if (!hardwarename.empty())
+		set_hardware_by_name(hardwarename);
+	set_system_mode(mode);
 }
 
 
@@ -578,60 +423,41 @@ void DomoticzClient::set_system_mode(const std::string mode, const std::string h
 void DomoticzClient::set_DHW_state(const std::string state, const std::string until)
 {
 	std::string idx;
-	try
-	{
-		idx = get_DHW();
-	}
-	catch (...)
-	{
-		throw;
-	}
+	idx = get_DHW();
 	if (idx == "-1")
 		throw std::invalid_argument("could not find Hot Water device in Domoticz");
 
 	std::string mode = (until.empty()) ? "PermanentOverride" : "TemporaryOverride";
 
 	std::stringstream ss;
-	ss << "/json.htm?type=setused&idx=" << idx << "&name=" << urlencode(devices[idx].Name) << "&description=" << urlencode(devices[idx].Description)
-	   << "&state=" << state << "&mode=" << mode << "&used=true";
-
+	ss << "&idx=" << idx << "&name=" << RESTClient::urlencode(m_devices[idx].Name) << "&description=" << RESTClient::urlencode(m_devices[idx].Description)
+	   << "&state=" << state << "&mode=" << mode;
+	if (!until.empty())
+		ss << "&until=" << until;
+	ss << "&used=true";
 
 #ifdef DRYRUN
-	std::cout << domoticzhost << ss.str() << std::endl;
+	std::cout << m_DomoticzHost << ss.str() << std::endl;
 #else
-
-	try
-	{
-		send_receive_data(ss.str());
-	}
-	catch (...)
-	{
-		throw;
-	}
+	std::string szResult;
+	if (m_useoldapi)
+		send_receive_data(domoticz::API::evohome::settemp + ss.str(), szResult);
+	else
+		send_receive_data(domoticz::APIv2::evohome::settemp + ss.str(), szResult);
 #endif
 }
 void DomoticzClient::set_DHW_state(const std::string state, const std::string until, const std::string hardwarename)
 {
-	try
-	{
-		if (!hardwarename.empty())
-			set_hardware_by_name(hardwarename);
-		set_DHW_state(state, until);
-	}
-	catch (...)
-	{
-		throw;
-	}
+	if (!hardwarename.empty())
+		set_hardware_by_name(hardwarename);
+	set_DHW_state(state, until);
 }
 
 
-
-
-
-
-
-
-
+void DomoticzClient::set_oldapi()
+{
+	m_useoldapi = true;
+}
 
 
 
