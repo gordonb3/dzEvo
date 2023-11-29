@@ -34,17 +34,17 @@ namespace domoticz {
   namespace APIv2 {
 
     namespace hardware {
-	static const std::string list = "type=command&gethardware";
+	static const std::string list = "type=command&param=gethardware";
 	static const std::string gettypes = "type=command&param=gethardwaretypes";
     }; // namespace hardware
 
     namespace devices {
-	static const std::string list = "type=command&getdevices&displayhidden=1&used=all";
+	static const std::string list = "type=command&param=getdevices&displayhidden=1&used=all";
     }; // namespace devices
 
     namespace evohome {
 	static const std::string setsysmode = "type=command&param=switchmodal";
-	static const std::string settemp = "type=command&setused";
+	static const std::string settemp = "type=command&param=setused";
     }; // namespace evohome
 
   }; // namespace APIv2
