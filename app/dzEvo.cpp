@@ -12,6 +12,7 @@
 #include <sstream>
 #include <map>
 #include <cstring>
+#include <cstdint>
 #include <time.h>
 #include <stdlib.h>
 #include "../domoticzclient/domoticzclient.h"
